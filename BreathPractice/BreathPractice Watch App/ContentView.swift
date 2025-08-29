@@ -35,46 +35,84 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .frame(height: 28)
                 
-                // Firefly particle breath indicator
+                // Firefly particle breath indicator with mathematical patterns
                 ZStack {
-                    // Glass background ring that expands to edge
-                    Circle()
-                        .stroke(.ultraThinMaterial, lineWidth: 2)
-                        .frame(width: 70, height: 70)
-                        .scaleEffect(viewModel.breathScale)
-                        .opacity(0.3)
-                    
-                    // Firefly particles
+                    // Firefly particles with complex patterns
                     FireflyParticlesView(
                         breathScale: viewModel.breathScale,
-                        isInhale: viewModel.isInhale
+                        isInhale: viewModel.isInhale,
+                        phase: viewModel.phase
                     )
+                    .scaleEffect(0.5) // Scale down to fit watch screen
                     
-                    // Core orb
+                    // Glass ring that expands
                     Circle()
-                        .fill(
-                            RadialGradient(
+                        .stroke(
+                            LinearGradient(
                                 gradient: Gradient(colors: [
-                                    viewModel.isInhale ? Color.cyan.opacity(0.8) : Color.orange.opacity(0.8),
-                                    viewModel.isInhale ? Color.blue.opacity(0.4) : Color.yellow.opacity(0.4),
+                                    phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.4),
                                     Color.clear
                                 ]),
-                                center: .center,
-                                startRadius: 5,
-                                endRadius: 25
-                            )
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: viewModel.phase == .holding ? 2 : 1
                         )
-                        .frame(width: 40, height: 40)
-                        .scaleEffect(viewModel.breathScale * 0.8)
-                        .shadow(color: viewModel.isInhale ? Color.cyan.opacity(0.6) : Color.orange.opacity(0.6), radius: 8)
+                        .frame(width: 70, height: 70)
+                        .scaleEffect(viewModel.breathScale)
+                        .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
                     
-                    // Center glow
-                    Circle()
-                        .fill(Color.white.opacity(0.9))
-                        .frame(width: 6, height: 6)
-                        .scaleEffect(viewModel.breathScale * 0.6)
-                        .blendMode(.plusLighter)
+                    // Core orb with glow - 2x size and brighter
+                    ZStack {
+                        // Outer glow layer
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    gradient: Gradient(colors: [
+                                        phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.9),
+                                        phaseSecondaryColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.5),
+                                        Color.clear
+                                    ]),
+                                    center: .center,
+                                    startRadius: 10,
+                                    endRadius: 40
+                                )
+                            )
+                            .frame(width: 70, height: 70)
+                            .scaleEffect(viewModel.breathScale)
+                            .blur(radius: viewModel.phase == .holding ? 3 : 2)
+                            .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
+                        
+                        // Main bright orb
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white.opacity(0.95),
+                                        phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale),
+                                        phaseSecondaryColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.7),
+                                        Color.clear
+                                    ]),
+                                    center: .center,
+                                    startRadius: 5,
+                                    endRadius: 35
+                                )
+                            )
+                            .frame(width: 60, height: 60)
+                            .scaleEffect(viewModel.breathScale * 0.9)
+                            .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
+                        
+                        // Bright center core
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 10, height: 10)
+                            .scaleEffect(viewModel.breathScale * 0.7)
+                            .blendMode(.plusLighter)
+                            .blur(radius: viewModel.phase == .holding ? 0.5 : 1)
+                            .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
+                    }
                 }
+                .frame(width: 70, height: 70)
                 .padding(.vertical, 8)
                 
                 // Control buttons
@@ -169,6 +207,28 @@ struct ContentView: View {
         }
         .onAppear {
             viewModel.updateDisplay()
+        }
+    }
+    
+    func phaseColor(for phase: BreathPhase, isInhale: Bool) -> Color {
+        switch phase {
+        case .holding:
+            return Color.purple
+        case .recovery, .preRecovery:
+            return Color.green
+        default:
+            return isInhale ? Color.cyan : Color.orange
+        }
+    }
+    
+    func phaseSecondaryColor(for phase: BreathPhase, isInhale: Bool) -> Color {
+        switch phase {
+        case .holding:
+            return Color.indigo
+        case .recovery, .preRecovery:
+            return Color.mint
+        default:
+            return isInhale ? Color.blue : Color.yellow
         }
     }
 }

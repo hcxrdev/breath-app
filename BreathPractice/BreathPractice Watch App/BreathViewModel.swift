@@ -29,6 +29,8 @@ class BreathViewModel: ObservableObject {
     private var startCountdown: TimeInterval = 3
     private var timer: Timer?
     private var breathTimer: TimeInterval = 0
+    private var holdHapticTimer: TimeInterval = 0
+    private var recoveryHapticTimer: TimeInterval = 0
     
     var currentBreathNumber: Int {
         return (breathCount / 2) + 1
@@ -62,6 +64,8 @@ class BreathViewModel: ObservableObject {
         isInhale = true
         breathProgress = 0
         breathTimer = 0
+        holdHapticTimer = 0
+        recoveryHapticTimer = 0
         breathScale = 0.01
         stopTimer()
         timerDisplay = ""
@@ -136,14 +140,14 @@ class BreathViewModel: ObservableObject {
                 breathProgress = 0
                 breathTimer = 0
                 
-                if isInhale {
-                    WKInterfaceDevice.current().play(.click)
-                }
+                // No haptics during regular breathing
                 
                 if breathCount >= totalBreaths * 2 {
                     phase = .holding
                     holdTime = 0
+                    holdHapticTimer = 0
                     breathScale = 0.01
+                    // Success haptic when entering hold phase
                     WKInterfaceDevice.current().play(.success)
                 }
             }
@@ -151,6 +155,13 @@ class BreathViewModel: ObservableObject {
             
         case .holding:
             holdTime += delta
+            holdHapticTimer += delta
+            
+            // Only haptic at 60 second milestones during hold
+            if holdHapticTimer >= 60 {
+                WKInterfaceDevice.current().play(.notification)
+                holdHapticTimer = 0
+            }
             
         case .preRecovery:
             startCountdown -= delta
@@ -165,7 +176,25 @@ class BreathViewModel: ObservableObject {
             
         case .recovery:
             recoveryTime -= delta
+            recoveryHapticTimer += delta
+            
+            // Only crescendo haptics in last 3 seconds of recovery
+            if recoveryTime <= 3 && recoveryTime > 0 {
+                if recoveryTime <= 1 {
+                    // Strong haptic in final second
+                    if recoveryTime.truncatingRemainder(dividingBy: 0.25) < delta {
+                        WKInterfaceDevice.current().play(.retry)
+                    }
+                } else if recoveryTime <= 2 {
+                    // Medium haptic at 2 seconds
+                    if recoveryTime.truncatingRemainder(dividingBy: 0.5) < delta {
+                        WKInterfaceDevice.current().play(.click)
+                    }
+                }
+            }
+            
             if recoveryTime <= 0 {
+                recoveryHapticTimer = 0
                 if round < 3 {
                     round += 1
                     phase = .starting
