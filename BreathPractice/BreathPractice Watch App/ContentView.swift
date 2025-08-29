@@ -35,15 +35,24 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .frame(height: 28)
                 
-                // Firefly particle breath indicator with mathematical patterns
+                // GLSL-inspired mathematical visualization
                 ZStack {
-                    // Firefly particles with complex patterns
-                    FireflyParticlesView(
+                    // Shader-inspired organic shape
+                    ShaderInspiredView(
                         breathScale: viewModel.breathScale,
                         isInhale: viewModel.isInhale,
                         phase: viewModel.phase
                     )
+                    .frame(width: 140, height: 140)
                     .scaleEffect(0.5) // Scale down to fit watch screen
+                    
+                    // Optional: Keep particles as overlay
+                    FireflyParticlesView(
+                        breathScale: viewModel.breathScale,
+                        isInhale: viewModel.isInhale
+                    )
+                    .scaleEffect(0.5)
+                    .opacity(0.3) // Make particles subtle overlay
                     
                     // Glass ring that expands
                     Circle()
