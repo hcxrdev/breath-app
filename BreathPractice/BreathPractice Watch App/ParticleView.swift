@@ -14,7 +14,6 @@ struct Particle: Identifiable {
 struct FireflyParticlesView: View {
     let breathScale: CGFloat
     let isInhale: Bool
-    let phase: BreathPhase
     @State private var particles: [Particle] = []
     @State private var time: Double = 0
     
@@ -27,8 +26,8 @@ struct FireflyParticlesView: View {
                     .fill(
                         RadialGradient(
                             gradient: Gradient(colors: [
-                                particleColor(for: phase, isInhale: isInhale).opacity(0.9),
-                                particleSecondaryColor(for: phase, isInhale: isInhale).opacity(0.3),
+                                (isInhale ? Color.cyan : Color.orange).opacity(0.9),
+                                (isInhale ? Color.blue : Color.yellow).opacity(0.3),
                                 Color.clear
                             ]),
                             center: .center,
@@ -109,28 +108,6 @@ struct FireflyParticlesView: View {
             
             // Scale variation for depth
             particles[i].scale = CGFloat(0.3 + 0.7 * (sin(time * 2 + Double(i) * 0.2) + 1) / 2)
-        }
-    }
-    
-    func particleColor(for phase: BreathPhase, isInhale: Bool) -> Color {
-        switch phase {
-        case .holding:
-            return Color.purple
-        case .recovery, .preRecovery:
-            return Color.green
-        default:
-            return isInhale ? Color.cyan : Color.orange
-        }
-    }
-    
-    func particleSecondaryColor(for phase: BreathPhase, isInhale: Bool) -> Color {
-        switch phase {
-        case .holding:
-            return Color.indigo
-        case .recovery, .preRecovery:
-            return Color.mint
-        default:
-            return isInhale ? Color.blue : Color.yellow
         }
     }
 }
