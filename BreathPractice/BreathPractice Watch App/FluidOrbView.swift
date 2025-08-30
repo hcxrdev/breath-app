@@ -4,34 +4,49 @@ struct FluidOrbView: View {
     let breathScale: CGFloat
     let isInhale: Bool
     let phase: BreathPhase
+    @ObservedObject var heartRateManager: HeartRateManager
     @State private var time: Double = 0
     @State private var waveOffset: CGFloat = 0
     @State private var animationTimer: Timer?
+    @State private var heartPulse: Double = 0
+    @State private var pulseTimer: Timer?
     
     var body: some View {
         Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let baseRadius = min(size.width, size.height) / 2
             
+            // Calculate heart-synchronized pulse scale
+            let heartBeatScale = 1.0 + sin(heartPulse * .pi * 2) * 0.15
+            
             // Only 2 layers to maintain performance over long sessions
             for layer in 0..<2 {
                 let layerFactor = CGFloat(layer) / 2.0
                 let layerTime = time + Double(layer) * 0.25
                 
-                // Create simpler blob path
+                // Create simpler blob path with heart rate pulse
                 let path = createFluidPath(
                     center: center,
-                    radius: baseRadius * breathScale * (0.5 + layerFactor * 0.3),
+                    radius: baseRadius * breathScale * (0.5 + layerFactor * 0.3) * heartBeatScale,
                     time: layerTime,
                     complexity: 2 - layer
                 )
                 
-                // Dynamic color based on phase and depth
-                let hue = getPhaseHue(phase: phase, isInhale: isInhale) + layerFactor * 0.1
-                let saturation = 0.7 + sin(layerTime * 0.5) * 0.2
-                let brightness = 0.95 - layerFactor * 0.2
-                
-                let layerColor = Color(hue: hue, saturation: saturation, brightness: brightness)
+                // Use HRV-based color when in breathing phase
+                let layerColor: Color
+                if phase == .breathing || phase == .idle {
+                    // Blend HRV color with phase color
+                    let hrvColor = heartRateManager.getHRVColor()
+                    let phaseCol = phaseColor(for: phase, isInhale: isInhale)
+                    // Mix colors based on HRV influence
+                    layerColor = hrvColor.opacity(0.7)
+                } else {
+                    // Use normal phase colors for other phases
+                    let hue = getPhaseHue(phase: phase, isInhale: isInhale) + layerFactor * 0.1
+                    let saturation = 0.7 + sin(layerTime * 0.5) * 0.2
+                    let brightness = 0.95 - layerFactor * 0.2
+                    layerColor = Color(hue: hue, saturation: saturation, brightness: brightness)
+                }
                 
                 // Apply gradient fill with glow effect
                 context.fill(
@@ -75,9 +90,11 @@ struct FluidOrbView: View {
         .blendMode(.plusLighter)
         .onAppear {
             startAnimation()
+            startHeartPulse()
         }
         .onDisappear {
             stopAnimation()
+            stopHeartPulse()
         }
     }
     
@@ -174,6 +191,25 @@ struct FluidOrbView: View {
     private func stopAnimation() {
         animationTimer?.invalidate()
         animationTimer = nil
+    }
+    
+    private func startHeartPulse() {
+        stopHeartPulse()
+        
+        // Update pulse based on actual heart rate
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
+            let pulseInterval = heartRateManager.getPulseInterval()
+            // Create smooth heartbeat animation
+            heartPulse += 1.0 / (pulseInterval * 30.0)
+            if heartPulse >= 1.0 {
+                heartPulse -= 1.0
+            }
+        }
+    }
+    
+    private func stopHeartPulse() {
+        pulseTimer?.invalidate()
+        pulseTimer = nil
     }
     
     private func getPhaseHue(phase: BreathPhase, isInhale: Bool) -> Double {

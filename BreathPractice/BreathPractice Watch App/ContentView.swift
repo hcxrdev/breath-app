@@ -10,6 +10,7 @@ import WatchKit
 
 struct ContentView: View {
     @StateObject private var viewModel = BreathViewModel()
+    @StateObject private var heartRateManager = HeartRateManager()
     @State private var time: Double = 0
     @State private var gradientAngle: Double = 0
     @State private var animationTimer: Timer?
@@ -34,10 +35,23 @@ struct ContentView: View {
             .animation(.linear(duration: 1), value: gradientAngle)
             
             VStack(spacing: 0) {
-                // Phase display
-                Text(viewModel.phase == .idle ? "Shakti:Breath" : "Round \(viewModel.round)/3")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
+                // Phase display with heart rate
+                HStack(spacing: 8) {
+                    Text(viewModel.phase == .idle ? "Shakti:Breath" : "Round \(viewModel.round)/3")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                    
+                    if heartRateManager.isMonitoring {
+                        HStack(spacing: 2) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(heartRateManager.getHRVColor())
+                            Text("\(Int(heartRateManager.currentHeartRate))")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                }
                 
                 // Timer display
                 Text(viewModel.timerDisplay)
@@ -87,7 +101,8 @@ struct ContentView: View {
                         FluidOrbView(
                             breathScale: viewModel.breathScale,
                             isInhale: viewModel.isInhale,
-                            phase: viewModel.phase
+                            phase: viewModel.phase,
+                            heartRateManager: heartRateManager
                         )
                         .frame(width: 125, height: 125) // 25% bigger orb
                     }
@@ -233,8 +248,10 @@ struct ContentView: View {
         .onChange(of: viewModel.isActive) { oldValue, newValue in
             if newValue {
                 startExtendedSession()
+                heartRateManager.startMonitoring()
             } else {
                 endExtendedSession()
+                heartRateManager.stopMonitoring()
             }
         }
     }
