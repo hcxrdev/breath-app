@@ -94,7 +94,6 @@ struct PowerOrbView: View {
     private func calculateGrowthFactor(_ time: TimeInterval) -> CGFloat {
         // Exponential growth curve
         // Starts at 0.05 (tiny dot), reaches 0.5 at 60s, 0.8 at 120s, continues growing
-        let normalizedTime = time / 120.0
         
         if time < 10 {
             // Very small at start
@@ -173,14 +172,6 @@ struct PowerOrbView: View {
     }
     
     private func drawPowerCore(context: GraphicsContext, center: CGPoint, radius: CGFloat, intensity: Double) {
-        // Bright pulsing core
-        let corePath = Path(ellipseIn: CGRect(
-            x: center.x - radius,
-            y: center.y - radius,
-            width: radius * 2,
-            height: radius * 2
-        ))
-        
         // Multiple glow layers
         for i in 0..<3 {
             let glowRadius = radius * (1 + CGFloat(i) * 0.3)
