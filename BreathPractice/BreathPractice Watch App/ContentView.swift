@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = BreathViewModel()
+    @State private var time: Double = 0
     
     var body: some View {
         ZStack {
@@ -35,93 +36,44 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .frame(height: 28)
                 
-                // GLSL-inspired mathematical visualization
+                // Premium fluid orb visualization
                 ZStack {
-                    // Shader-inspired organic shape
-                    ShaderInspiredView(
+                    // Background particles for depth
+                    FireflyParticlesView(
+                        breathScale: viewModel.breathScale,
+                        isInhale: viewModel.isInhale
+                    )
+                    .frame(width: 160, height: 160)
+                    .opacity(0.3)
+                    
+                    // Main fluid orb animation
+                    FluidOrbView(
                         breathScale: viewModel.breathScale,
                         isInhale: viewModel.isInhale,
                         phase: viewModel.phase
                     )
                     .frame(width: 140, height: 140)
-                    .scaleEffect(0.5) // Scale down to fit watch screen
                     
-                    // Optional: Keep particles as overlay
-                    FireflyParticlesView(
-                        breathScale: viewModel.breathScale,
-                        isInhale: viewModel.isInhale
-                    )
-                    .scaleEffect(0.5)
-                    .opacity(0.3) // Make particles subtle overlay
-                    
-                    // Glass ring that expands
+                    // Outer breathing ring
                     Circle()
                         .stroke(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.4),
+                                    phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.6),
+                                    phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.2),
                                     Color.clear
                                 ]),
-                                startPoint: .top,
-                                endPoint: .bottom
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             ),
-                            lineWidth: viewModel.phase == .holding ? 2 : 1
+                            lineWidth: viewModel.phase == .holding ? 3 : 1.5
                         )
-                        .frame(width: 70, height: 70)
+                        .frame(width: 140, height: 140)
                         .scaleEffect(viewModel.breathScale)
+                        .rotationEffect(.degrees(time * 30))
                         .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
-                    
-                    // Core orb with glow - 2x size and brighter
-                    ZStack {
-                        // Outer glow layer
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    gradient: Gradient(colors: [
-                                        phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.9),
-                                        phaseSecondaryColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.5),
-                                        Color.clear
-                                    ]),
-                                    center: .center,
-                                    startRadius: 10,
-                                    endRadius: 40
-                                )
-                            )
-                            .frame(width: 70, height: 70)
-                            .scaleEffect(viewModel.breathScale)
-                            .blur(radius: viewModel.phase == .holding ? 3 : 2)
-                            .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
-                        
-                        // Main bright orb
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.95),
-                                        phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale),
-                                        phaseSecondaryColor(for: viewModel.phase, isInhale: viewModel.isInhale).opacity(0.7),
-                                        Color.clear
-                                    ]),
-                                    center: .center,
-                                    startRadius: 5,
-                                    endRadius: 35
-                                )
-                            )
-                            .frame(width: 60, height: 60)
-                            .scaleEffect(viewModel.breathScale * 0.9)
-                            .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
-                        
-                        // Bright center core
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 10, height: 10)
-                            .scaleEffect(viewModel.breathScale * 0.7)
-                            .blendMode(.plusLighter)
-                            .blur(radius: viewModel.phase == .holding ? 0.5 : 1)
-                            .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
-                    }
                 }
-                .frame(width: 70, height: 70)
+                .frame(width: 140, height: 140)
                 .padding(.vertical, 8)
                 
                 // Control buttons
@@ -216,6 +168,10 @@ struct ContentView: View {
         }
         .onAppear {
             viewModel.updateDisplay()
+            // Start rotation animation
+            Timer.scheduledTimer(withTimeInterval: 1/60.0, repeats: true) { _ in
+                time += 0.016
+            }
         }
     }
     

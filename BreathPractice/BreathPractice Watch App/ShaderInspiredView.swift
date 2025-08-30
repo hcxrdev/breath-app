@@ -78,7 +78,6 @@ struct ShaderInspiredView: View {
                     saturation: 0.8,
                     brightness: 0.9
                 )
-                let blendedColor = baseColor.opacity(0.7).blendMode(.screen)
                 
                 // Simulate volumetric lighting with tanh (from GLSL: o = tanh(vec4(1,1,9,0)*o / 1e1))
                 let intensity = tanh(Double(8 - layer) / 3.0)
