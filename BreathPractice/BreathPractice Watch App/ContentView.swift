@@ -42,13 +42,21 @@ struct ContentView: View {
                         .foregroundColor(.white.opacity(0.7))
                     
                     if heartRateManager.isMonitoring {
-                        HStack(spacing: 2) {
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 8))
-                                .foregroundColor(heartRateManager.getHRVColor())
-                            Text("\(Int(heartRateManager.currentHeartRate))")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.white.opacity(0.7))
+                        HStack(spacing: 4) {
+                            // Heart rate
+                            HStack(spacing: 2) {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(heartRateManager.getHRVColor())
+                                Text("\(Int(heartRateManager.currentHeartRate))")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            
+                            // HRV indicator
+                            Text("HRV:\(Int(heartRateManager.currentHRV))ms")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(heartRateManager.getHRVColor().opacity(0.9))
                         }
                     }
                 }

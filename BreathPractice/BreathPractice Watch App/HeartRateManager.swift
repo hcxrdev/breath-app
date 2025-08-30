@@ -5,17 +5,22 @@ import WatchKit
 class HeartRateManager: ObservableObject {
     private let healthStore = HKHealthStore()
     private var heartRateQuery: HKAnchoredObjectQuery?
-    private var hrvQuery: HKAnchoredObjectQuery?
+    private var workoutSession: HKWorkoutSession?
     
     @Published var currentHeartRate: Double = 60
-    @Published var currentHRV: Double = 50
+    @Published var currentHRV: Double = 30  // RMSSD in ms
     @Published var isMonitoring = false
-    @Published var heartRateVariability: Double = 0
     
-    // HRV ranges for color mapping (in milliseconds)
-    let hrvLow: Double = 20    // Stressed/low HRV
-    let hrvOptimal: Double = 50 // Optimal HRV
-    let hrvHigh: Double = 100   // Very relaxed/high HRV
+    // Store recent heartbeat intervals for HRV calculation
+    private var recentBeatIntervals: [TimeInterval] = []
+    private var lastHeartbeatTime: Date?
+    private let maxIntervals = 20  // Keep last 20 intervals for RMSSD calculation
+    
+    // HRV RMSSD ranges for color mapping (in milliseconds)
+    // Based on typical RMSSD values during breathing exercises
+    let hrvLow: Double = 15     // Low HRV (stressed)
+    let hrvOptimal: Double = 40  // Good HRV
+    let hrvHigh: Double = 70     // Excellent HRV (very relaxed)
     
     // Heart rate ranges
     let hrResting: Double = 60
@@ -49,8 +54,11 @@ class HeartRateManager: ObservableObject {
     func startMonitoring() {
         guard !isMonitoring else { return }
         
+        // Clear previous data
+        recentBeatIntervals.removeAll()
+        lastHeartbeatTime = nil
+        
         startHeartRateQuery()
-        startHRVQuery()
         isMonitoring = true
         
         // Start workout session for continuous HR monitoring
@@ -61,11 +69,13 @@ class HeartRateManager: ObservableObject {
         if let query = heartRateQuery {
             healthStore.stop(query)
         }
-        if let query = hrvQuery {
-            healthStore.stop(query)
-        }
         heartRateQuery = nil
-        hrvQuery = nil
+        
+        if let session = workoutSession {
+            session.end()
+        }
+        workoutSession = nil
+        
         isMonitoring = false
     }
     
@@ -89,25 +99,6 @@ class HeartRateManager: ObservableObject {
         healthStore.execute(query)
     }
     
-    private func startHRVQuery() {
-        let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!
-        
-        let query = HKAnchoredObjectQuery(
-            type: hrvType,
-            predicate: nil,
-            anchor: nil,
-            limit: HKObjectQueryNoLimit
-        ) { [weak self] query, samples, deletedObjects, anchor, error in
-            self?.processHRVSamples(samples)
-        }
-        
-        query.updateHandler = { [weak self] query, samples, deletedObjects, anchor, error in
-            self?.processHRVSamples(samples)
-        }
-        
-        hrvQuery = query
-        healthStore.execute(query)
-    }
     
     private func processHeartRateSamples(_ samples: [HKSample]?) {
         guard let heartRateSamples = samples as? [HKQuantitySample] else { return }
@@ -121,27 +112,50 @@ class HeartRateManager: ObservableObject {
                 
                 // Smooth the heart rate changes
                 self.currentHeartRate = self.currentHeartRate * 0.7 + heartRate * 0.3
+                
+                // Calculate beat-to-beat interval for HRV
+                let currentTime = mostRecent.endDate
+                if let lastTime = self.lastHeartbeatTime {
+                    let interval = currentTime.timeIntervalSince(lastTime)
+                    
+                    // Only use reasonable intervals (between 0.4 and 2 seconds = 30-150 BPM)
+                    if interval > 0.4 && interval < 2.0 {
+                        self.recentBeatIntervals.append(interval)
+                        
+                        // Keep only recent intervals
+                        if self.recentBeatIntervals.count > self.maxIntervals {
+                            self.recentBeatIntervals.removeFirst()
+                        }
+                        
+                        // Calculate RMSSD (Root Mean Square of Successive Differences)
+                        self.calculateHRV()
+                    }
+                }
+                self.lastHeartbeatTime = currentTime
             }
         }
     }
     
-    private func processHRVSamples(_ samples: [HKSample]?) {
-        guard let hrvSamples = samples as? [HKQuantitySample] else { return }
+    private func calculateHRV() {
+        guard recentBeatIntervals.count >= 3 else { return }
         
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            if let mostRecent = hrvSamples.last {
-                let hrvUnit = HKUnit.secondUnit(with: .milli)
-                let hrv = mostRecent.quantity.doubleValue(for: hrvUnit)
-                
-                // Smooth the HRV changes
-                self.currentHRV = self.currentHRV * 0.8 + hrv * 0.2
-                
-                // Calculate variability for visualization
-                self.heartRateVariability = abs(hrv - self.currentHRV) / self.currentHRV
-            }
+        var successiveDifferences: [Double] = []
+        
+        // Calculate successive differences
+        for i in 1..<recentBeatIntervals.count {
+            let diff = (recentBeatIntervals[i] - recentBeatIntervals[i-1]) * 1000 // Convert to ms
+            successiveDifferences.append(diff * diff) // Square the difference
         }
+        
+        // Calculate mean of squared differences
+        let sumSquared = successiveDifferences.reduce(0, +)
+        let meanSquared = sumSquared / Double(successiveDifferences.count)
+        
+        // Take square root to get RMSSD
+        let rmssd = sqrt(meanSquared)
+        
+        // Smooth the HRV value
+        currentHRV = currentHRV * 0.7 + rmssd * 0.3
     }
     
     private func startWorkoutSession() {
@@ -151,8 +165,8 @@ class HeartRateManager: ObservableObject {
         configuration.locationType = .unknown
         
         do {
-            let session = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
-            session.startActivity(with: Date())
+            workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
+            workoutSession?.startActivity(with: Date())
             
             // This keeps heart rate monitoring active
             if let device = HKDevice.local() {
@@ -183,29 +197,52 @@ class HeartRateManager: ObservableObject {
     }
     
     func getHRVColor() -> Color {
-        // Map HRV to color gradient
-        // Low HRV (stressed): Red/Orange
-        // Optimal HRV: Green/Cyan
-        // High HRV (very relaxed): Blue/Purple
+        // Map RMSSD HRV to color gradient
+        // RMSSD values during breathing:
+        // < 15ms: Low HRV (stressed) - Red/Orange
+        // 15-40ms: Moderate HRV - Orange to Green
+        // 40-70ms: Good HRV - Green to Cyan
+        // > 70ms: Excellent HRV (very relaxed) - Blue/Purple
         
         if currentHRV < hrvLow {
-            return Color.red
+            // Very low HRV - red
+            return Color(hue: 0.0, saturation: 0.9, brightness: 0.8)
         } else if currentHRV < hrvOptimal {
+            // Low to moderate - red to green gradient
             let progress = (currentHRV - hrvLow) / (hrvOptimal - hrvLow)
             return Color(
-                hue: 0.08 + progress * 0.42, // Red to green
+                hue: progress * 0.33, // Red (0) to green (0.33)
                 saturation: 0.8,
-                brightness: 0.9
+                brightness: 0.85
             )
         } else if currentHRV < hrvHigh {
+            // Good HRV - green to cyan gradient
             let progress = (currentHRV - hrvOptimal) / (hrvHigh - hrvOptimal)
             return Color(
-                hue: 0.5 + progress * 0.25, // Green to blue
+                hue: 0.33 + progress * 0.17, // Green to cyan
                 saturation: 0.7,
                 brightness: 0.9
             )
         } else {
-            return Color.purple
+            // Excellent HRV - blue/purple
+            let excess = min((currentHRV - hrvHigh) / 30, 1.0)
+            return Color(
+                hue: 0.5 + excess * 0.25, // Cyan to purple
+                saturation: 0.6,
+                brightness: 0.95
+            )
+        }
+    }
+    
+    func getHRVDescription() -> String {
+        if currentHRV < hrvLow {
+            return "Low"
+        } else if currentHRV < hrvOptimal {
+            return "Moderate"
+        } else if currentHRV < hrvHigh {
+            return "Good"
+        } else {
+            return "Excellent"
         }
     }
     
