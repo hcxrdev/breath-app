@@ -129,10 +129,10 @@ struct ShaderInspiredView: View {
         let steps = 20
         for step in 0..<steps {
             let t = Double(step) / Double(steps)
-            let depth = t * 24.0 - 12.0 // Simulate depth from GLSL: d - 24
+            // Removed unused depth variable
             
             // Calculate distance field
-            let stepTime = time + t * 2
+            // Removed unused stepTime variable
             let stepRadius = maxRadius * 0.8 * (1.0 - t * 0.5) * breathScale
             
             // Create volumetric circle at this depth
