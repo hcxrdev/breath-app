@@ -11,35 +11,57 @@ struct ShaderInspiredView: View {
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let maxRadius = min(size.width, size.height) / 2
             
-            // Create multiple layers for depth
-            for layer in 0..<5 {
-                let layerTime = time + Double(layer) * 0.3
-                let layerScale = 1.0 - Double(layer) * 0.15
+            // Simulate ray marching with multiple layers
+            drawRayMarchedVolume(context: context, center: center, maxRadius: maxRadius)
+            
+            // Create multiple layers for depth (simulating volumetric rendering)
+            for layer in 0..<8 {
+                let layerTime = time + Double(layer) * 0.2
+                let layerScale = 1.0 - Double(layer) * 0.1
+                let layerDepth = Double(layer) / 8.0
                 
                 // Create path with mathematical distortions
                 var path = Path()
-                let points = 128
+                let points = 256 // Higher resolution for smoother curves
                 
                 for i in 0...points {
                     let angle = Double(i) * 2 * .pi / Double(points)
                     
-                    // Complex radius calculation inspired by GLSL
+                    // GLSL-inspired SDF (Signed Distance Function) simulation
                     var radius = maxRadius * 0.3 * layerScale * breathScale
                     
-                    // Add multiple sine wave distortions
-                    radius += sin(angle * 3 + layerTime * 2) * 10
-                    radius += cos(angle * 5 - layerTime * 1.5) * 8
-                    radius += sin(angle * 7 + layerTime * 3) * 6
+                    // Implement the GLSL formula: p += cos(p.yzx*2.)*.2
+                    let px = cos(angle) * radius
+                    let py = sin(angle) * radius
+                    let pz = layerDepth * 24 - 12 // Simulate z-depth
                     
-                    // Add breathing modulation
-                    radius *= (0.8 + 0.2 * sin(layerTime))
+                    // Fractal octaves similar to: s -= abs(dot(sin(p * a), .3+p-p)) / a
+                    var fractalAccum = 0.0
+                    var amplitude = 0.6
+                    for octave in 1...4 {
+                        let a = amplitude * pow(2, Double(octave))
+                        let fx = sin(px * a + layerTime * 2)
+                        let fy = sin(py * a + layerTime * 3)
+                        let fz = sin(pz * a + layerTime * 4)
+                        fractalAccum += abs(fx * fy * fz) / a
+                        amplitude *= 0.5
+                    }
                     
-                    // Fractal-like recursion
-                    let fractalNoise = sin(angle * 16 + layerTime * 4) * cos(angle * 8 - layerTime * 2)
-                    radius += fractalNoise * 4 * breathScale
+                    radius -= fractalAccum * 10
                     
-                    let x = center.x + CGFloat(cos(angle) * radius)
-                    let y = center.y + CGFloat(sin(angle) * radius)
+                    // Add rotation matrix transformation: p.xz *= mat2(cos(t*.1+vec4(0,33,11,0)))
+                    let rotAngle = time * 0.1 + Double(layer) * 0.5
+                    let rotatedX = cos(angle + rotAngle) * radius
+                    let rotatedY = sin(angle + rotAngle) * radius
+                    
+                    // Add multiple sphere SDF influences
+                    let sphere1 = sin(sin(time * 2) + time * 0.7) * 6
+                    let sphere2 = sin(sin(time * 3) + time * 0.5) * 6
+                    let sphereInfluence = exp(-abs(angle - sphere1) * 0.5) + exp(-abs(angle - sphere2) * 0.3)
+                    radius += sphereInfluence * 8 * breathScale
+                    
+                    let x = center.x + CGFloat(rotatedX)
+                    let y = center.y + CGFloat(rotatedY)
                     
                     if i == 0 {
                         path.move(to: CGPoint(x: x, y: y))
@@ -49,29 +71,49 @@ struct ShaderInspiredView: View {
                 }
                 path.closeSubpath()
                 
-                // Color based on phase and layer
+                // Enhanced color based on depth and phase
                 let baseColor = phaseColor(for: phase, isInhale: isInhale)
-                let opacity = 0.3 / (Double(layer) + 1)
+                let depthColor = Color(
+                    hue: (layerDepth * 0.1 + time * 0.05).truncatingRemainder(dividingBy: 1.0),
+                    saturation: 0.8,
+                    brightness: 0.9
+                )
+                let blendedColor = baseColor.opacity(0.7).blendMode(.screen)
                 
+                // Simulate volumetric lighting with tanh (from GLSL: o = tanh(vec4(1,1,9,0)*o / 1e1))
+                let intensity = tanh(Double(8 - layer) / 3.0)
+                let opacity = intensity * 0.4 / (Double(layer) + 1)
+                
+                // Fill with enhanced gradient
                 context.fill(
                     path,
                     with: .radialGradient(
                         Gradient(colors: [
-                            baseColor.opacity(opacity * 2),
+                            baseColor.opacity(opacity * 3),
+                            depthColor.opacity(opacity * 1.5),
                             baseColor.opacity(opacity * 0.5),
                             Color.clear
                         ]),
                         center: center,
                         startRadius: 0,
-                        endRadius: maxRadius * breathScale
+                        endRadius: maxRadius * breathScale * layerScale
                     )
                 )
                 
-                // Add glow effect
+                // Add chromatic aberration effect
+                let aberrationOffset = 1.0 + sin(time * 2) * 0.5
                 context.stroke(
                     path,
-                    with: .color(baseColor.opacity(opacity * 0.8)),
-                    lineWidth: 1
+                    with: .linearGradient(
+                        Gradient(colors: [
+                            Color.red.opacity(opacity * 0.3),
+                            baseColor.opacity(opacity * 0.8),
+                            Color.blue.opacity(opacity * 0.3)
+                        ]),
+                        startPoint: CGPoint(x: center.x - aberrationOffset, y: center.y),
+                        endPoint: CGPoint(x: center.x + aberrationOffset, y: center.y)
+                    ),
+                    lineWidth: 0.5
                 )
             }
             
@@ -80,6 +122,45 @@ struct ShaderInspiredView: View {
         }
         .onAppear {
             startAnimation()
+        }
+    }
+    
+    private func drawRayMarchedVolume(context: GraphicsContext, center: CGPoint, maxRadius: CGFloat) {
+        // Simulate ray marching steps from GLSL
+        let steps = 20
+        for step in 0..<steps {
+            let t = Double(step) / Double(steps)
+            let depth = t * 24.0 - 12.0 // Simulate depth from GLSL: d - 24
+            
+            // Calculate distance field
+            let stepTime = time + t * 2
+            let stepRadius = maxRadius * 0.8 * (1.0 - t * 0.5) * breathScale
+            
+            // Create volumetric circle at this depth
+            let volumePath = Path(ellipseIn: CGRect(
+                x: center.x - stepRadius,
+                y: center.y - stepRadius,
+                width: stepRadius * 2,
+                height: stepRadius * 2
+            ))
+            
+            // Simulate fog/volume accumulation
+            let opacity = 0.02 * exp(-t * 2) * breathScale
+            let volumeColor = phaseColor(for: phase, isInhale: isInhale)
+            
+            context.fill(
+                volumePath,
+                with: .radialGradient(
+                    Gradient(colors: [
+                        volumeColor.opacity(opacity * 2),
+                        volumeColor.opacity(opacity),
+                        Color.clear
+                    ]),
+                    center: center,
+                    startRadius: stepRadius * 0.5,
+                    endRadius: stepRadius
+                )
+            )
         }
     }
     
