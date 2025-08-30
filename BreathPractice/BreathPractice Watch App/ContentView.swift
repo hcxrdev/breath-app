@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
+import WatchKit
 
 struct ContentView: View {
     @StateObject private var viewModel = BreathViewModel()
     @State private var time: Double = 0
     @State private var gradientAngle: Double = 0
     @State private var animationTimer: Timer?
+    @State private var extendedSession: WKExtendedRuntimeSession?
+    @State private var sessionDelegate: ExtendedSessionDelegate?
     
     var body: some View {
         ZStack {
@@ -76,12 +79,18 @@ struct ContentView: View {
                         .animation(.easeInOut(duration: 0.2), value: time)
                     
                     // Main fluid orb animation - 25% bigger
-                    FluidOrbView(
-                        breathScale: viewModel.breathScale,
-                        isInhale: viewModel.isInhale,
-                        phase: viewModel.phase
-                    )
-                    .frame(width: 125, height: 125) // 25% bigger orb
+                    if viewModel.phase == .holding {
+                        // Special power orb for holding phase
+                        PowerOrbView(holdTime: viewModel.holdTime)
+                            .frame(width: 125, height: 125)
+                    } else {
+                        FluidOrbView(
+                            breathScale: viewModel.breathScale,
+                            isInhale: viewModel.isInhale,
+                            phase: viewModel.phase
+                        )
+                        .frame(width: 125, height: 125) // 25% bigger orb
+                    }
                     
                     // Prominent glowing outer ring - 25% bigger
                     ZStack {
@@ -147,62 +156,62 @@ struct ContentView: View {
                     
                     // Settings (only show when not active)
                     if !viewModel.isActive {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             // Breaths control
-                            VStack(spacing: 2) {
+                            VStack(spacing: 1) {
                                 Text("BREATHS")
-                                    .font(.system(size: 8, weight: .medium))
+                                    .font(.system(size: 7, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
                                 
-                                HStack(spacing: 4) {
+                                HStack(spacing: 2) {
                                     Button(action: viewModel.decreaseBreaths) {
                                         Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 20))
+                                            .font(.system(size: 18))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 28, height: 28)
+                                            .frame(width: 24, height: 24)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     
                                     Text("\(viewModel.totalBreaths)")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(.system(size: 11, weight: .semibold))
                                         .foregroundColor(.white)
-                                        .frame(minWidth: 25)
+                                        .frame(minWidth: 22)
                                     
                                     Button(action: viewModel.increaseBreaths) {
                                         Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 20))
+                                            .font(.system(size: 18))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 28, height: 28)
+                                            .frame(width: 24, height: 24)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
                             }
                             
                             // Length control
-                            VStack(spacing: 2) {
+                            VStack(spacing: 1) {
                                 Text("TIME")
-                                    .font(.system(size: 8, weight: .medium))
+                                    .font(.system(size: 7, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
                                 
-                                HStack(spacing: 4) {
+                                HStack(spacing: 2) {
                                     Button(action: viewModel.decreaseLength) {
                                         Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 20))
+                                            .font(.system(size: 18))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 28, height: 28)
+                                            .frame(width: 24, height: 24)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     
                                     Text("\(String(format: "%.1f", viewModel.breathLength))s")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(.system(size: 11, weight: .semibold))
                                         .foregroundColor(.white)
-                                        .frame(minWidth: 35)
+                                        .frame(minWidth: 32)
                                     
                                     Button(action: viewModel.increaseLength) {
                                         Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 20))
+                                            .font(.system(size: 18))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 28, height: 28)
+                                            .frame(width: 24, height: 24)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
@@ -219,6 +228,14 @@ struct ContentView: View {
         }
         .onDisappear {
             stopAnimationTimer()
+            endExtendedSession()
+        }
+        .onChange(of: viewModel.isActive) { oldValue, newValue in
+            if newValue {
+                startExtendedSession()
+            } else {
+                endExtendedSession()
+            }
         }
     }
     
@@ -226,21 +243,44 @@ struct ContentView: View {
         // Cancel any existing timer first
         stopAnimationTimer()
         
-        // Create a single timer for all animations
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/15.0, repeats: true) { _ in
-            withAnimation(.linear(duration: 0.066)) {
-                time += 0.066
+        // Create a single timer for all animations - slower rate for better performance
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/10.0, repeats: true) { _ in
+            withAnimation(.linear(duration: 0.1)) {
+                time += 0.1
                 // Slow gradient animation only during breathing
                 if viewModel.isActive {
-                    gradientAngle += 0.02
+                    gradientAngle += 0.03
                 }
             }
+        }
+        
+        // Keep the run loop active
+        if let timer = animationTimer {
+            RunLoop.current.add(timer, forMode: .common)
         }
     }
     
     private func stopAnimationTimer() {
         animationTimer?.invalidate()
         animationTimer = nil
+    }
+    
+    private func startExtendedSession() {
+        guard extendedSession == nil else { return }
+        
+        sessionDelegate = ExtendedSessionDelegate()
+        extendedSession = WKExtendedRuntimeSession()
+        extendedSession?.delegate = sessionDelegate
+        extendedSession?.start()
+        
+        // Small haptic to wake screen
+        WKInterfaceDevice.current().play(.success)
+    }
+    
+    private func endExtendedSession() {
+        extendedSession?.invalidate()
+        extendedSession = nil
+        sessionDelegate = nil
     }
     
     func phaseColor(for phase: BreathPhase, isInhale: Bool) -> Color {
@@ -321,6 +361,21 @@ struct CompactGlassButtonStyle: ButtonStyle {
             .foregroundColor(.white)
             .shadow(color: color.opacity(0.2), radius: 2, x: 0, y: 1)
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+    }
+}
+
+// Extended session delegate to keep app active
+class ExtendedSessionDelegate: NSObject, WKExtendedRuntimeSessionDelegate {
+    func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
+        // Session started
+    }
+    
+    func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
+        // Session expiring
+    }
+    
+    func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {
+        // Session ended
     }
 }
 
