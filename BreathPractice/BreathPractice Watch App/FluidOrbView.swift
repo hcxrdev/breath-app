@@ -4,7 +4,7 @@ struct FluidOrbView: View {
     let breathScale: CGFloat
     let isInhale: Bool
     let phase: BreathPhase
-    @ObservedObject var heartRateManager: HeartRateManager
+    // @ObservedObject var heartRateManager: HeartRateManager // Disabled until added to project
     @State private var time: Double = 0
     @State private var waveOffset: CGFloat = 0
     @State private var animationTimer: Timer?
@@ -32,21 +32,11 @@ struct FluidOrbView: View {
                     complexity: 2 - layer
                 )
                 
-                // Use HRV-based color when in breathing phase
-                let layerColor: Color
-                if phase == .breathing || phase == .idle {
-                    // Blend HRV color with phase color
-                    let hrvColor = heartRateManager.getHRVColor()
-                    let phaseCol = phaseColor(for: phase, isInhale: isInhale)
-                    // Mix colors based on HRV influence
-                    layerColor = hrvColor.opacity(0.7)
-                } else {
-                    // Use normal phase colors for other phases
-                    let hue = getPhaseHue(phase: phase, isInhale: isInhale) + layerFactor * 0.1
-                    let saturation = 0.7 + sin(layerTime * 0.5) * 0.2
-                    let brightness = 0.95 - layerFactor * 0.2
-                    layerColor = Color(hue: hue, saturation: saturation, brightness: brightness)
-                }
+                // Use normal phase colors
+                let hue = getPhaseHue(phase: phase, isInhale: isInhale) + layerFactor * 0.1
+                let saturation = 0.7 + sin(layerTime * 0.5) * 0.2
+                let brightness = 0.95 - layerFactor * 0.2
+                let layerColor = Color(hue: hue, saturation: saturation, brightness: brightness)
                 
                 // Apply gradient fill with glow effect
                 context.fill(
@@ -90,11 +80,11 @@ struct FluidOrbView: View {
         .blendMode(.plusLighter)
         .onAppear {
             startAnimation()
-            startHeartPulse()
+            // startHeartPulse() // Disabled until added to project
         }
         .onDisappear {
             stopAnimation()
-            stopHeartPulse()
+            // stopHeartPulse() // Disabled until added to project
         }
     }
     
@@ -193,24 +183,25 @@ struct FluidOrbView: View {
         animationTimer = nil
     }
     
-    private func startHeartPulse() {
-        stopHeartPulse()
-        
-        // Update pulse based on actual heart rate
-        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
-            let pulseInterval = heartRateManager.getPulseInterval()
-            // Create smooth heartbeat animation
-            heartPulse += 1.0 / (pulseInterval * 30.0)
-            if heartPulse >= 1.0 {
-                heartPulse -= 1.0
-            }
-        }
-    }
-    
-    private func stopHeartPulse() {
-        pulseTimer?.invalidate()
-        pulseTimer = nil
-    }
+    // Disabled until HeartRateManager is added to project
+    // private func startHeartPulse() {
+    //     stopHeartPulse()
+    //     
+    //     // Update pulse based on actual heart rate
+    //     pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
+    //         let pulseInterval = heartRateManager.getPulseInterval()
+    //         // Create smooth heartbeat animation
+    //         heartPulse += 1.0 / (pulseInterval * 30.0)
+    //         if heartPulse >= 1.0 {
+    //             heartPulse -= 1.0
+    //         }
+    //     }
+    // }
+    // 
+    // private func stopHeartPulse() {
+    //     pulseTimer?.invalidate()
+    //     pulseTimer = nil
+    // }
     
     private func getPhaseHue(phase: BreathPhase, isInhale: Bool) -> Double {
         switch phase {

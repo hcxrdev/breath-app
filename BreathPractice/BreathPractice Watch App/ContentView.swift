@@ -10,7 +10,7 @@ import WatchKit
 
 struct ContentView: View {
     @StateObject private var viewModel = BreathViewModel()
-    @StateObject private var heartRateManager = HeartRateManager()
+    // @StateObject private var heartRateManager = HeartRateManager() // Disabled until added to project
     @State private var time: Double = 0
     @State private var gradientAngle: Double = 0
     @State private var animationTimer: Timer?
@@ -41,7 +41,7 @@ struct ContentView: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
                     
-                    if heartRateManager.isMonitoring {
+                    if false { // heartRateManager.isMonitoring {
                         HStack(spacing: 4) {
                             // Heart rate
                             HStack(spacing: 2) {
@@ -109,8 +109,8 @@ struct ContentView: View {
                         FluidOrbView(
                             breathScale: viewModel.breathScale,
                             isInhale: viewModel.isInhale,
-                            phase: viewModel.phase,
-                            heartRateManager: heartRateManager
+                            phase: viewModel.phase
+                            // heartRateManager: heartRateManager // Disabled until added to project
                         )
                         .frame(width: 125, height: 125) // 25% bigger orb
                     }
@@ -256,10 +256,10 @@ struct ContentView: View {
         .onChange(of: viewModel.isActive) { oldValue, newValue in
             if newValue {
                 startExtendedSession()
-                heartRateManager.startMonitoring()
+                // heartRateManager.startMonitoring() // Disabled until added to project
             } else {
                 endExtendedSession()
-                heartRateManager.stopMonitoring()
+                // heartRateManager.stopMonitoring() // Disabled until added to project
             }
         }
     }
