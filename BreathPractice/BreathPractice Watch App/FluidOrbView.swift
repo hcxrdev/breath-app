@@ -4,7 +4,7 @@ struct FluidOrbView: View {
     let breathScale: CGFloat
     let isInhale: Bool
     let phase: BreathPhase
-    // @ObservedObject var heartRateManager: HeartRateManager // Disabled until added to project
+    @ObservedObject var heartRateManager: HeartRateManager
     @State private var time: Double = 0
     @State private var waveOffset: CGFloat = 0
     @State private var animationTimer: Timer?
@@ -80,11 +80,11 @@ struct FluidOrbView: View {
         .blendMode(.plusLighter)
         .onAppear {
             startAnimation()
-            // startHeartPulse() // Disabled until added to project
+            startHeartPulse()
         }
         .onDisappear {
             stopAnimation()
-            // stopHeartPulse() // Disabled until added to project
+            stopHeartPulse()
         }
     }
     
@@ -183,25 +183,24 @@ struct FluidOrbView: View {
         animationTimer = nil
     }
     
-    // Disabled until HeartRateManager is added to project
-    // private func startHeartPulse() {
-    //     stopHeartPulse()
-    //     
-    //     // Update pulse based on actual heart rate
-    //     pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
-    //         let pulseInterval = heartRateManager.getPulseInterval()
-    //         // Create smooth heartbeat animation
-    //         heartPulse += 1.0 / (pulseInterval * 30.0)
-    //         if heartPulse >= 1.0 {
-    //             heartPulse -= 1.0
-    //         }
-    //     }
-    // }
-    // 
-    // private func stopHeartPulse() {
-    //     pulseTimer?.invalidate()
-    //     pulseTimer = nil
-    // }
+    private func startHeartPulse() {
+        stopHeartPulse()
+        
+        // Update pulse based on actual heart rate
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
+            let pulseInterval = heartRateManager.getPulseInterval()
+            // Create smooth heartbeat animation
+            heartPulse += 1.0 / (pulseInterval * 30.0)
+            if heartPulse >= 1.0 {
+                heartPulse -= 1.0
+            }
+        }
+    }
+    
+    private func stopHeartPulse() {
+        pulseTimer?.invalidate()
+        pulseTimer = nil
+    }
     
     private func getPhaseHue(phase: BreathPhase, isInhale: Bool) -> Double {
         switch phase {

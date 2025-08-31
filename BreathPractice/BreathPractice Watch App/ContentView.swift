@@ -10,7 +10,7 @@ import WatchKit
 
 struct ContentView: View {
     @StateObject private var viewModel = BreathViewModel()
-    // @StateObject private var heartRateManager = HeartRateManager() // Disabled until added to project
+    @StateObject private var heartRateManager = HeartRateManager()
     @State private var time: Double = 0
     @State private var gradientAngle: Double = 0
     @State private var animationTimer: Timer?
@@ -35,15 +35,19 @@ struct ContentView: View {
             .animation(.linear(duration: 1), value: gradientAngle)
             
             VStack(spacing: 0) {
+                // Add padding at top to move text below the time
+                Spacer()
+                    .frame(height: 25)
+                
                 // Phase display with heart rate
                 HStack(spacing: 8) {
                     Text(viewModel.phase == .idle ? "Shakti:Breath" : "Round \(viewModel.round)/3")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: viewModel.phase == .idle ? 20 : 10, weight: viewModel.phase == .idle ? .light : .medium))
+                        .foregroundColor(.white.opacity(viewModel.phase == .idle ? 0.9 : 0.7))
                     
-                    if false { // heartRateManager.isMonitoring {
+                    if heartRateManager.isMonitoring {
                         HStack(spacing: 4) {
-                            // Heart rate
+                            // Heart rate with pulse indicator
                             HStack(spacing: 2) {
                                 Image(systemName: "heart.fill")
                                     .font(.system(size: 8))
@@ -53,10 +57,10 @@ struct ContentView: View {
                                     .foregroundColor(.white.opacity(0.7))
                             }
                             
-                            // HRV indicator
-                            Text("HRV:\(Int(heartRateManager.currentHRV))ms")
+                            // HRV indicator - more subtle display
+                            Text("HRV:\(Int(heartRateManager.currentHRV))")
                                 .font(.system(size: 8, weight: .medium))
-                                .foregroundColor(heartRateManager.getHRVColor().opacity(0.9))
+                                .foregroundColor(heartRateManager.getHRVColor().opacity(0.8))
                         }
                     }
                 }
@@ -103,16 +107,16 @@ struct ContentView: View {
                     // Main fluid orb animation - 25% bigger
                     if viewModel.phase == .holding {
                         // Special power orb for holding phase
-                        PowerOrbView(holdTime: viewModel.holdTime)
-                            .frame(width: 125, height: 125)
+                        PowerOrbView(holdTime: viewModel.holdTime, heartRateManager: heartRateManager)
+                            .frame(width: 115, height: 115)  // Reduced from 125
                     } else {
                         FluidOrbView(
                             breathScale: viewModel.breathScale,
                             isInhale: viewModel.isInhale,
-                            phase: viewModel.phase
-                            // heartRateManager: heartRateManager // Disabled until added to project
+                            phase: viewModel.phase,
+                            heartRateManager: heartRateManager
                         )
-                        .frame(width: 125, height: 125) // 25% bigger orb
+                        .frame(width: 115, height: 115)  // Reduced from 125
                     }
                     
                     // Prominent glowing outer ring - 25% bigger
@@ -123,7 +127,7 @@ struct ContentView: View {
                                 phaseColor(for: viewModel.phase, isInhale: viewModel.isInhale),
                                 lineWidth: viewModel.phase == .holding ? 5 : 3
                             )
-                            .frame(width: 125, height: 125)
+                            .frame(width: 115, height: 115)  // Reduced from 125
                             .blur(radius: 5)
                             .opacity(0.8)
                             .scaleEffect(viewModel.breathScale)
@@ -142,27 +146,27 @@ struct ContentView: View {
                                 ),
                                 lineWidth: viewModel.phase == .holding ? 4 : 2.5
                             )
-                            .frame(width: 125, height: 125)
+                            .frame(width: 115, height: 115)  // Reduced from 125
                             .scaleEffect(viewModel.breathScale)
                             .rotationEffect(.degrees(time * 30))
                     }
                     .animation(.easeInOut(duration: 0.5), value: viewModel.phase)
                 }
-                .frame(width: 125, height: 125)
+                .frame(width: 115, height: 115)  // Reduced from 125 to give more room
                 .padding(.vertical, 0) // Removed padding
                 
                 // Control buttons - more compact
                 VStack(spacing: 2) {
                     HStack(spacing: 4) {
                         Button(action: viewModel.startStop) {
-                            Text(viewModel.isActive ? "Pause" : "Start")
+                            Text(viewModel.isActive ? "PAUSE" : "START")
                                 .font(.system(size: 10, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(CompactGlassButtonStyle(color: .blue))
                         
                         Button(action: viewModel.reset) {
-                            Text("Reset")
+                            Text("RESET")
                                 .font(.system(size: 10, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                         }
@@ -171,70 +175,71 @@ struct ContentView: View {
                     
                     if viewModel.phase == .holding {
                         Button(action: viewModel.finishHolding) {
-                            Text("Finish Hold")
-                                .font(.system(size: 10, weight: .semibold))
+                            Text("FINISH HOLD")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
                         }
-                        .buttonStyle(CompactGlassButtonStyle(color: .green))
+                        .buttonStyle(BrightGlassButtonStyle(color: .green))
                     }
                     
                     // Settings (only show when not active)
                     if !viewModel.isActive {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             // Breaths control
-                            VStack(spacing: 1) {
+                            VStack(spacing: 0) {
                                 Text("BREATHS")
-                                    .font(.system(size: 7, weight: .medium))
+                                    .font(.system(size: 6, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
                                 
-                                HStack(spacing: 2) {
+                                HStack(spacing: 1) {
                                     Button(action: viewModel.decreaseBreaths) {
                                         Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 18))
+                                            .font(.system(size: 14))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 24, height: 24)
+                                            .frame(width: 20, height: 20)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     
                                     Text("\(viewModel.totalBreaths)")
-                                        .font(.system(size: 11, weight: .semibold))
+                                        .font(.system(size: 10, weight: .semibold))
                                         .foregroundColor(.white)
-                                        .frame(minWidth: 22)
+                                        .frame(minWidth: 18)
                                     
                                     Button(action: viewModel.increaseBreaths) {
                                         Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 18))
+                                            .font(.system(size: 14))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 24, height: 24)
+                                            .frame(width: 20, height: 20)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
                             }
                             
                             // Length control
-                            VStack(spacing: 1) {
+                            VStack(spacing: 0) {
                                 Text("TIME")
-                                    .font(.system(size: 7, weight: .medium))
+                                    .font(.system(size: 6, weight: .medium))
                                     .foregroundColor(.white.opacity(0.6))
                                 
-                                HStack(spacing: 2) {
+                                HStack(spacing: 1) {
                                     Button(action: viewModel.decreaseLength) {
                                         Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 18))
+                                            .font(.system(size: 14))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 24, height: 24)
+                                            .frame(width: 20, height: 20)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     
                                     Text("\(String(format: "%.1f", viewModel.breathLength))s")
-                                        .font(.system(size: 11, weight: .semibold))
+                                        .font(.system(size: 10, weight: .semibold))
                                         .foregroundColor(.white)
-                                        .frame(minWidth: 32)
+                                        .frame(minWidth: 28)
                                     
                                     Button(action: viewModel.increaseLength) {
                                         Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 18))
+                                            .font(.system(size: 14))
                                             .foregroundColor(.white.opacity(0.8))
-                                            .frame(width: 24, height: 24)
+                                            .frame(width: 20, height: 20)
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
@@ -244,6 +249,7 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal, 4)
+            .padding(.bottom, 10)  // Increased bottom padding to clear rounded edge
         }
         .onAppear {
             viewModel.updateDisplay()
@@ -256,10 +262,10 @@ struct ContentView: View {
         .onChange(of: viewModel.isActive) { oldValue, newValue in
             if newValue {
                 startExtendedSession()
-                // heartRateManager.startMonitoring() // Disabled until added to project
+                heartRateManager.startMonitoring()
             } else {
                 endExtendedSession()
-                // heartRateManager.stopMonitoring() // Disabled until added to project
+                heartRateManager.stopMonitoring()
             }
         }
     }
@@ -272,9 +278,9 @@ struct ContentView: View {
         animationTimer = Timer.scheduledTimer(withTimeInterval: 1/10.0, repeats: true) { _ in
             withAnimation(.linear(duration: 0.1)) {
                 time += 0.1
-                // Slow gradient animation only during breathing
+                // Slow gradient animation only during breathing - 1/4 speed
                 if viewModel.isActive {
-                    gradientAngle += 0.03
+                    gradientAngle += 0.0075  // Was 0.03, now 0.0075 (1/4 speed)
                 }
             }
         }
@@ -385,6 +391,54 @@ struct CompactGlassButtonStyle: ButtonStyle {
             )
             .foregroundColor(.white)
             .shadow(color: color.opacity(0.2), radius: 2, x: 0, y: 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+    }
+}
+
+struct BrightGlassButtonStyle: ButtonStyle {
+    let color: Color
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                ZStack {
+                    // Bright base layer
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(color.opacity(configuration.isPressed ? 0.6 : 0.4))
+                    
+                    // Glow effect
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.3),
+                                    color.opacity(0.5),
+                                    color.opacity(0.3)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                    
+                    // Strong inner highlight
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.5),
+                                    Color.white.opacity(0.2)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 1
+                        )
+                }
+            )
+            .foregroundColor(.white)
+            .shadow(color: color.opacity(0.4), radius: 3, x: 0, y: 2)
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
     }
 }

@@ -2,8 +2,11 @@ import SwiftUI
 
 struct PowerOrbView: View {
     let holdTime: TimeInterval
+    @ObservedObject var heartRateManager: HeartRateManager
     @State private var energyPulse: Double = 0
     @State private var animationTimer: Timer?
+    @State private var heartPulse: Double = 0
+    @State private var pulseTimer: Timer?
     
     var body: some View {
         Canvas { context, size in
@@ -28,9 +31,11 @@ struct PowerOrbView: View {
                 let layerFactor = CGFloat(layer) / 3.0
                 let layerRadius = orbRadius * (0.7 + layerFactor * 0.3)
                 
-                // Create pulsing effect that intensifies with time
-                let pulseAmount = sin(energyPulse * (2 + holdTime / 60)) * (0.1 + holdTime / 600)
-                let actualRadius = layerRadius * (1 + pulseAmount)
+                // Create pulsing effect synchronized with heartbeat
+                // Heart pulse stays consistent, only amplitude grows with time
+                let heartBeatScale = 1.0 + sin(heartPulse * .pi * 2) * (0.1 + holdTime / 1200)
+                let energyWave = sin(energyPulse * 2) * 0.05 // Gentle energy wave, constant speed
+                let actualRadius = layerRadius * heartBeatScale * (1 + energyWave)
                 
                 // Dynamic color based on time and layer
                 let layerColor = getLayerColor(progress: colorProgress, layer: layer)
@@ -75,8 +80,9 @@ struct PowerOrbView: View {
                 }
             }
             
-            // Draw bright core that intensifies with time
-            drawPowerCore(context: context, center: center, radius: orbRadius * 0.3, intensity: colorProgress)
+            // Draw bright core that pulses with heartbeat - consistent speed, growing amplitude
+            let coreHeartScale = 1.0 + sin(heartPulse * .pi * 2) * (0.15 + holdTime / 600)
+            drawPowerCore(context: context, center: center, radius: orbRadius * 0.3 * coreHeartScale, intensity: colorProgress)
             
             // Add lightning/energy effects at high power levels
             if holdTime > 100 {
@@ -85,9 +91,11 @@ struct PowerOrbView: View {
         }
         .onAppear {
             startAnimation()
+            startHeartPulse()
         }
         .onDisappear {
             stopAnimation()
+            stopHeartPulse()
         }
     }
     
@@ -140,21 +148,21 @@ struct PowerOrbView: View {
         for i in 0...points {
             let angle = Double(i) * 2 * .pi / Double(points)
             
-            // Create increasingly chaotic movement at higher power
+            // Create organic movement that doesn't speed up over time
             var r = radius
             
-            // Base wave
+            // Base wave - constant speed
             r += sin(angle * 3 + time * 2) * radius * 0.1
             
-            // Power surge waves that increase with intensity
+            // Power surge waves that increase amplitude (not speed) with intensity
             if intensity > 0.3 {
-                r += cos(angle * 5 + time * 3) * radius * 0.1 * intensity
+                r += cos(angle * 5 + time * 2.5) * radius * 0.1 * intensity
             }
             
             if intensity > 0.7 {
-                // Chaotic energy at high power
-                r += sin(angle * 8 + time * 5) * radius * 0.05 * intensity
-                r += cos(angle * 11 + time * 7) * radius * 0.03 * intensity
+                // More complex shape at high power, but same speed
+                r += sin(angle * 8 + time * 3) * radius * 0.05 * intensity
+                r += cos(angle * 11 + time * 3.5) * radius * 0.03 * intensity
             }
             
             let x = center.x + cos(angle) * r
@@ -270,5 +278,24 @@ struct PowerOrbView: View {
     private func stopAnimation() {
         animationTimer?.invalidate()
         animationTimer = nil
+    }
+    
+    private func startHeartPulse() {
+        stopHeartPulse()
+        
+        // Update pulse based on actual heart rate
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
+            let pulseInterval = heartRateManager.getPulseInterval()
+            // Create smooth heartbeat animation
+            heartPulse += 1.0 / (pulseInterval * 30.0)
+            if heartPulse >= 1.0 {
+                heartPulse -= 1.0
+            }
+        }
+    }
+    
+    private func stopHeartPulse() {
+        pulseTimer?.invalidate()
+        pulseTimer = nil
     }
 }

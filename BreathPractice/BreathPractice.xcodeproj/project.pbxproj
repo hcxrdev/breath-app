@@ -55,9 +55,22 @@
 		8E266D442E5D20CB00529B15 /* BreathPractice Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "BreathPractice Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8E8E2F5D2E63DF5A0054DEB3 /* Exceptions for "BreathPractice Watch App" folder in "BreathPractice Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8E266D272E5D20CA00529B15 /* BreathPractice Watch App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8E266D2C2E5D20CA00529B15 /* BreathPractice Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8E8E2F5D2E63DF5A0054DEB3 /* Exceptions for "BreathPractice Watch App" folder in "BreathPractice Watch App" target */,
+			);
 			path = "BreathPractice Watch App";
 			sourceTree = "<group>";
 		};
@@ -457,7 +470,8 @@
 				DEVELOPMENT_ASSET_PATHS = "\"BreathPractice Watch App/Preview Content\"";
 				DEVELOPMENT_TEAM = 8HTSPLG97S;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "BreathPractice Watch App/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = BreathPractice;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKWatchOnly = YES;
@@ -489,7 +503,8 @@
 				DEVELOPMENT_ASSET_PATHS = "\"BreathPractice Watch App/Preview Content\"";
 				DEVELOPMENT_TEAM = 8HTSPLG97S;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "BreathPractice Watch App/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = BreathPractice;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKWatchOnly = YES;

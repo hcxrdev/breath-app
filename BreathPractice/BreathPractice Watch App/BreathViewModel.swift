@@ -147,8 +147,8 @@ class BreathViewModel: ObservableObject {
                     holdTime = 0
                     holdHapticTimer = 0
                     breathScale = 0.01
-                    // Success haptic when entering hold phase
-                    WKInterfaceDevice.current().play(.success)
+                    // Stronger haptic when entering hold phase
+                    WKInterfaceDevice.current().play(.directionUp)
                 }
             }
             updateBreathIndicator()
@@ -157,9 +157,9 @@ class BreathViewModel: ObservableObject {
             holdTime += delta
             holdHapticTimer += delta
             
-            // Only haptic at 60 second milestones during hold
+            // Stronger haptic at 60 second milestones during hold
             if holdHapticTimer >= 60 {
-                WKInterfaceDevice.current().play(.notification)
+                WKInterfaceDevice.current().play(.success)
                 holdHapticTimer = 0
             }
             
@@ -171,26 +171,17 @@ class BreathViewModel: ObservableObject {
             if startCountdown <= 0 {
                 phase = .recovery
                 recoveryTime = 15
-                WKInterfaceDevice.current().play(.start)
+                // Single strong haptic when entering recovery
+                WKInterfaceDevice.current().play(.success)
             }
             
         case .recovery:
             recoveryTime -= delta
             recoveryHapticTimer += delta
             
-            // Only crescendo haptics in last 3 seconds of recovery
-            if recoveryTime <= 3 && recoveryTime > 0 {
-                if recoveryTime <= 1 {
-                    // Strong haptic in final second
-                    if recoveryTime.truncatingRemainder(dividingBy: 0.25) < delta {
-                        WKInterfaceDevice.current().play(.retry)
-                    }
-                } else if recoveryTime <= 2 {
-                    // Medium haptic at 2 seconds
-                    if recoveryTime.truncatingRemainder(dividingBy: 0.5) < delta {
-                        WKInterfaceDevice.current().play(.click)
-                    }
-                }
+            // Single haptic at 3 seconds before end of recovery
+            if recoveryTime <= 3 && recoveryTime > 2.9 {
+                WKInterfaceDevice.current().play(.directionUp)
             }
             
             if recoveryTime <= 0 {
@@ -199,10 +190,12 @@ class BreathViewModel: ObservableObject {
                     round += 1
                     phase = .starting
                     startCountdown = 3
-                    WKInterfaceDevice.current().play(.notification)
+                    // Stronger haptic for new round
+                    WKInterfaceDevice.current().play(.success)
                 } else {
                     reset()
-                    WKInterfaceDevice.current().play(.stop)
+                    // Final completion haptic
+                    WKInterfaceDevice.current().play(.success)
                     return
                 }
             }

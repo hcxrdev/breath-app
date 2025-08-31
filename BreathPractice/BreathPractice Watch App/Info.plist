@@ -2,9 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSHealthShareUsageDescription</key>
-    <string>Shakti:Breath uses your heart rate and heart rate variability to personalize your breathing practice visualization.</string>
-    <key>NSHealthUpdateUsageDescription</key>
-    <string>Shakti:Breath tracks your mindfulness sessions in Health.</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleDisplayName</key>
+	<string>BreathPractice</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKWatchOnly</key>
+	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>This app reads your heart rate to synchronize breathing exercises with your heart rhythm and calculate heart rate variability.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>This app tracks your breathing sessions as mindfulness activities.</string>
 </dict>
 </plist>

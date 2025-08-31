@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import WatchKit
+import SwiftUI
 
 class HeartRateManager: ObservableObject {
     private let healthStore = HKHealthStore()
@@ -169,19 +170,16 @@ class HeartRateManager: ObservableObject {
             workoutSession?.startActivity(with: Date())
             
             // This keeps heart rate monitoring active
-            if let device = HKDevice.local() {
-                let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
-                let predicate = HKQuery.predicateForObjects(from: device)
-                
-                let streamingQuery = HKObserverQuery(sampleType: heartRateType, predicate: predicate) { [weak self] query, completionHandler, error in
-                    if error == nil {
-                        self?.queryLatestHeartRate()
-                    }
-                    completionHandler()
+            let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+            
+            let streamingQuery = HKObserverQuery(sampleType: heartRateType, predicate: nil) { [weak self] query, completionHandler, error in
+                if error == nil {
+                    self?.queryLatestHeartRate()
                 }
-                
-                healthStore.execute(streamingQuery)
+                completionHandler()
             }
+            
+            healthStore.execute(streamingQuery)
         } catch {
             print("Failed to start workout session: \(error)")
         }
