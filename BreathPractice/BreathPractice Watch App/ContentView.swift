@@ -19,7 +19,7 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            // Animated darker background gradient
+            // Animated darker background gradient - optimized
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color.blue.opacity(0.15),
@@ -32,7 +32,6 @@ struct ContentView: View {
                                    y: 0.5 - sin(gradientAngle) * 0.3)
             )
             .ignoresSafeArea()
-            .animation(.linear(duration: 1), value: gradientAngle)
             
             VStack(spacing: 0) {
                 // Add padding at top to move text below the time
@@ -73,15 +72,8 @@ struct ContentView: View {
                 
                 // Premium fluid orb visualization - sized for watch
                 ZStack {
-                    // Background particles - disabled during active breathing for performance
-                    if !viewModel.isActive {
-                        FireflyParticlesView(
-                            breathScale: viewModel.breathScale,
-                            isInhale: viewModel.isInhale
-                        )
-                        .frame(width: 120, height: 120)
-                        .opacity(0.3)
-                    }
+                    // Background particles - completely disabled for performance
+                    // FireflyParticlesView removed for performance
                     
                     // Animated glow behind orb - bigger and smoother
                     Circle()
@@ -100,9 +92,8 @@ struct ContentView: View {
                         )
                         .frame(width: 160, height: 160) // 25% bigger glow
                         .blur(radius: 15)
-                        .scaleEffect(viewModel.breathScale * (0.95 + sin(time * 0.5) * 0.05))
-                        .opacity(0.8 + sin(time * 0.8) * 0.2)
-                        .animation(.easeInOut(duration: 0.2), value: time)
+                        .scaleEffect(viewModel.breathScale)
+                        .opacity(0.8)
                     
                     // Main fluid orb animation - 25% bigger
                     if viewModel.phase == .holding {
@@ -274,14 +265,12 @@ struct ContentView: View {
         // Cancel any existing timer first
         stopAnimationTimer()
         
-        // Create a single timer for all animations - slower rate for better performance
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/10.0, repeats: true) { _ in
-            withAnimation(.linear(duration: 0.1)) {
-                time += 0.1
-                // Slow gradient animation only during breathing - 1/4 speed
-                if viewModel.isActive {
-                    gradientAngle += 0.0075  // Was 0.03, now 0.0075 (1/4 speed)
-                }
+        // Create a single timer for all animations - optimized for performance
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/6.0, repeats: true) { _ in
+            time += 0.166
+            // Very slow gradient animation - subtle movement
+            if viewModel.isActive {
+                gradientAngle += 0.012  // Super slow rotation
             }
         }
         

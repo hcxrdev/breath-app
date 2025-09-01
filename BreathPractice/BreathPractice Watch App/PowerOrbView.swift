@@ -270,8 +270,8 @@ struct PowerOrbView: View {
     
     private func startAnimation() {
         stopAnimation()
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
-            energyPulse += 0.05
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/15.0, repeats: true) { _ in
+            energyPulse += 0.066
         }
     }
     
@@ -283,11 +283,11 @@ struct PowerOrbView: View {
     private func startHeartPulse() {
         stopHeartPulse()
         
-        // Update pulse based on actual heart rate
-        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
+        // Update pulse based on actual heart rate - reduced frequency for performance
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/15.0, repeats: true) { _ in
             let pulseInterval = heartRateManager.getPulseInterval()
             // Create smooth heartbeat animation
-            heartPulse += 1.0 / (pulseInterval * 30.0)
+            heartPulse += 1.0 / (pulseInterval * 15.0)
             if heartPulse >= 1.0 {
                 heartPulse -= 1.0
             }

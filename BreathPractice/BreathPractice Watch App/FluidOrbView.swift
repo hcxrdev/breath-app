@@ -170,11 +170,9 @@ struct FluidOrbView: View {
         // Cancel any existing timer first
         stopAnimation()
         
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/15.0, repeats: true) { _ in
-            withAnimation(.linear(duration: 0.066)) {
-                time += 0.05  // Slower time progression
-                waveOffset += 0.06
-            }
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 1/10.0, repeats: true) { _ in
+            time += 0.1  // Slower time progression
+            waveOffset += 0.1
         }
     }
     
@@ -186,11 +184,11 @@ struct FluidOrbView: View {
     private func startHeartPulse() {
         stopHeartPulse()
         
-        // Update pulse based on actual heart rate
-        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { _ in
+        // Update pulse based on actual heart rate - reduced frequency for performance
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1/15.0, repeats: true) { _ in
             let pulseInterval = heartRateManager.getPulseInterval()
             // Create smooth heartbeat animation
-            heartPulse += 1.0 / (pulseInterval * 30.0)
+            heartPulse += 1.0 / (pulseInterval * 15.0)
             if heartPulse >= 1.0 {
                 heartPulse -= 1.0
             }
